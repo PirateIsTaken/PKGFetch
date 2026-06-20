@@ -22,7 +22,7 @@ func main() {
 
 	switch command {
 	case "help":
-		ShowHelpDialog()
+		Logger.ShowHelpDialog()
 	case "search":
 		HandleSearch()
 	case "install":
@@ -88,21 +88,4 @@ func IsArgumentGiven() (string, bool) {
 		return "", false
 	}
 	return os.Args[2], true
-}
-
-// @TODO: Put this in Logger package
-func ShowHelpDialog() {
-	fmt.Println("Usage:")
-	fmt.Println("  pkgf <command>")
-	fmt.Println("  pkgf <command> <args>")
-	fmt.Println()
-	fmt.Println("Available Commands:")
-	fmt.Println("  help")
-	fmt.Println("    Show this dialog")
-	println()
-	fmt.Println("  install <package>")
-	fmt.Println("    Installs given package name (if exists)")
-	println()
-	fmt.Println("  search <package name>")
-	fmt.Println("    Searches for the given package name")
 }
