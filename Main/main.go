@@ -2,7 +2,7 @@ package main
 
 import (
 	"os"
-	"sort"
+	"time"
 
 	"pkgfetch/Globals"
 	"pkgfetch/Logger"
@@ -33,6 +33,7 @@ func main() {
 
 // Mechanics
 func HandleSearch() {
+	start := time.Now()
 	if argument, ok := IsArgumentGiven(); ok {
 		Logger.LogMessageSameLine("Searching For: %s", argument)
 		Logger.LogNewLine()
@@ -69,31 +70,15 @@ func HandleSearch() {
 			}
 		}
 	}
+
+	Logger.LogMessage("Time Took To Search: %v", time.Since(start))
+	Logger.LogNewLine()
 }
 
 func HandleInstall() {
 	if argument, ok := IsArgumentGiven(); ok {
 		Logger.LogMessageSameLine("Installing: %s", argument)
 	}
-}
-
-func GetPkgListGithub(pkgName string) []Repository {
-	repos := SearchGithub(pkgName)
-	askedRepos := SearchForPkg(pkgName, repos)
-
-	// Score All The Repos
-	for i := range askedRepos {
-		CalculateScore(&askedRepos[i])
-	}
-	SortPkgOnScore(askedRepos)
-
-	return askedRepos
-}
-
-func SortPkgOnScore(repos []Repository) {
-	sort.Slice(repos, func(i, j int) bool {
-		return repos[i].Score > repos[j].Score
-	})
 }
 
 // Helpers

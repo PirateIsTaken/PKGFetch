@@ -1,174 +1,65 @@
 package main
 
-type Repository struct {
-	Name        string
-	Description string
-	Link        string
+import (
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/url"
+	"sort"
 
-	Stars int
-	Forks int
+	"pkgfetch/Logger"
+)
 
-	IsFork      bool
-	IsArchived  bool
-	HasReleases bool
+type GithubRepo struct {
+	Name        string `json:"full_name"`
+	Description string `json:"description"`
+	Link        string `json:"html_url"`
 
-	Score int
+	Stars uint `json:"stargazers_count"`
+	Forks uint `json:"forks_count"`
+
+	IsFork      bool `json:"fork"`
+	IsArchived  bool `json:"archived"`
+	HasReleases bool `json:"-"`
+
+	Score uint `json:"-"`
 }
 
-func SearchGithub(searchName string) []Repository {
-	// @TEMP
-	// FAKE REPOS
-	return []Repository{
-		{
-			Name:        "AppFlowy-IO/AppFlowy",
-			Description: "Open source alternative to Notion.",
-			Link:        "https://github.com/AppFlowy-IO/AppFlowy",
+type GithubSearchResponse struct {
+	Items []GithubRepo `json:"items"`
+}
 
-			Stars:       65000,
-			Forks:       4200,
-			IsFork:      false,
-			IsArchived:  false,
-			HasReleases: true,
-		},
-		{
-			Name:        "zed-industries/zed",
-			Description: "High-performance multiplayer code editor.",
-			Link:        "https://github.com/zed-industries/zed",
+func SearchGithub(searchName string) []GithubRepo {
+	searchURL := fmt.Sprintf(
+		"https://api.github.com/search/repositories?q=%s",
+		url.QueryEscape(searchName),
+	)
+	resp, err := http.Get(searchURL)
 
-			Stars:       62000,
-			Forks:       1800,
-			IsFork:      false,
-			IsArchived:  false,
-			HasReleases: true,
-		},
-		{
-			Name:        "godotengine/godot",
-			Description: "Cross-platform open source game engine.",
-			Link:        "https://github.com/godotengine/godot",
-
-			Stars:       102000,
-			Forks:       23000,
-			IsFork:      false,
-			IsArchived:  false,
-			HasReleases: true,
-		},
-		{
-			Name:        "randomdev/AppFlowy",
-			Description: "Personal fork of AppFlowy with custom changes.",
-			Link:        "https://github.com/randomdev/AppFlowy",
-
-			Stars:       12,
-			Forks:       1,
-			IsFork:      true,
-			IsArchived:  true,
-			HasReleases: false,
-		},
-		{
-			Name:        "anotherRandom/AppFlowy",
-			Description: "Personal fork of AppFlowy with custom changes.",
-			Link:        "https://github.com/randomdev/AppFlowy",
-
-			Stars:       10,
-			Forks:       1,
-			IsFork:      true,
-			IsArchived:  true,
-			HasReleases: true,
-		},
-		{
-			Name:        "coolguy/zed-fork",
-			Description: "Experimental fork of Zed.",
-			Link:        "https://github.com/coolguy/zed-fork",
-
-			Stars:       130,
-			Forks:       22,
-			IsFork:      true,
-			IsArchived:  false,
-			HasReleases: true,
-		},
-		{
-			Name:        "oldtools/LegacyEditor",
-			Description: "A discontinued text editor.",
-			Link:        "https://github.com/oldtools/LegacyEditor",
-
-			Stars:       8200,
-			Forks:       600,
-			IsFork:      false,
-			IsArchived:  true,
-			HasReleases: true,
-		},
-		{
-			Name:        "abandoned/OldLauncher",
-			Description: "Old game launcher no longer maintained.",
-			Link:        "https://github.com/abandoned/OldLauncher",
-
-			Stars:       2400,
-			Forks:       120,
-			IsFork:      false,
-			IsArchived:  true,
-			HasReleases: true,
-		},
-		{
-			Name:        "somebody/NewCoolApp",
-			Description: "Promising new application.",
-			Link:        "https://github.com/somebody/NewCoolApp",
-
-			Stars:       350,
-			Forks:       17,
-			IsFork:      false,
-			IsArchived:  true,
-			HasReleases: false,
-		},
-		{
-			Name:        "docs/AppFlowy-Docs",
-			Description: "Documentation repository for AppFlowy.",
-			Link:        "https://github.com/docs/AppFlowy-Docs",
-
-			Stars:       500,
-			Forks:       90,
-			IsFork:      false,
-			IsArchived:  false,
-			HasReleases: false,
-		},
-		{
-			Name:        "example/TestProject",
-			Description: "Test project with no releases.",
-			Link:        "https://github.com/example/TestProject",
-
-			Stars:       15000,
-			Forks:       500,
-			IsFork:      false,
-			IsArchived:  false,
-			HasReleases: false,
-		},
-		{
-			Name:        "HelixEditor/helix",
-			Description: "A post-modern text editor.",
-			Link:        "https://github.com/HelixEditor/helix",
-
-			Stars:       42000,
-			Forks:       3200,
-			IsFork:      false,
-			IsArchived:  false,
-			HasReleases: true,
-		},
-		{
-			Name:        "obsidianmd/obsidian-releases",
-			Description: "Release repository for Obsidian.",
-			Link:        "https://github.com/obsidianmd/obsidian-releases",
-
-			Stars:       18000,
-			Forks:       900,
-			IsFork:      false,
-			IsArchived:  false,
-			HasReleases: true,
-		},
+	if err != nil {
+		Logger.LogError("Failed To Contact Github: %v", err)
+		return nil
 	}
 
+	defer resp.Body.Close()
+
+	var result GithubSearchResponse
+	err = json.NewDecoder(resp.Body).Decode(&result)
+	if err != nil {
+		Logger.LogError("Failed To Get Info From Github Response: %v", err)
+		return nil
+	}
+
+	Logger.LogMessageSameLine("Total Packages Found: %d.", len(result.Items))
+	Logger.LogMessageSameLine(" Use --show-all to show all the packages")
+	Logger.LogNewLine()
+
+	return result.Items
 }
 
 // Mechanics
-func CalculateScore(repo *Repository) {
-	score := 0
+func CalculateScoreGithub(repo *GithubRepo) {
+	var score uint = 0
 
 	score += repo.Stars / 100
 	score += repo.Forks
@@ -184,4 +75,24 @@ func CalculateScore(repo *Repository) {
 	}
 
 	repo.Score = score
+}
+
+// Helpers
+func GetPkgListGithub(pkgName string) []GithubRepo {
+	repos := SearchGithub(pkgName)
+
+	// Score All The Repos
+	for i := range repos {
+		CalculateScoreGithub(&repos[i])
+	}
+	SortPkgOnScoreGithub(repos)
+	repos = repos[:10]
+
+	return repos
+}
+
+func SortPkgOnScoreGithub(repos []GithubRepo) {
+	sort.Slice(repos, func(i, j int) bool {
+		return repos[i].Score > repos[j].Score
+	})
 }
