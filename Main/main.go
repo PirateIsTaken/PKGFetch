@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"sort"
 
@@ -11,10 +10,10 @@ import (
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Println("Usage:")
-		fmt.Println("  pkgf <command>")
-		fmt.Println("  pkgf <command> <args>")
-		fmt.Println(Logger.LOG_MISSUSE_COMMAND)
+		Logger.LogMessageSameLine("Usage:")
+		Logger.LogMessage("  %s <command>", Globals.PROGRAM_NAME_CMD)
+		Logger.LogMessage("  %s <command> <args>", Globals.PROGRAM_NAME_CMD)
+		Logger.LogMessage(Logger.LOG_MISSUSE_COMMAND)
 		return
 	}
 
@@ -28,29 +27,45 @@ func main() {
 	case "install":
 		HandleInstall()
 	default:
-		fmt.Printf("Unknown Command: %s \n%s\n", command, Logger.LOG_MISSUSE_COMMAND)
+		Logger.LogWarningSameLine("Unknown Command: %s \n%s", command, Logger.LOG_MISSUSE_COMMAND)
 	}
 }
 
 // Mechanics
 func HandleSearch() {
 	if argument, ok := IsArgumentGiven(); ok {
-		fmt.Printf("Searching For: %s\n", argument)
+		Logger.LogMessageSameLine("Searching For: %s", argument)
+		Logger.LogNewLine()
 		repos := GetPkgListGithub(argument)
 
 		if len(repos) == 0 {
-			fmt.Printf("Didn't Find Any Packages With The Name: %s\n", argument)
+			Logger.LogMessage("Didn't Find Any Packages With The Name: %s", argument)
+			Logger.LogNewLine()
+			return
 		}
 
 		for index, repo := range repos {
-			fmt.Printf("Name: %s | Score: %d\n", repo.Name, repo.Score)
-			fmt.Printf("  IsFork: %t | IsArvhived: %t\n", repo.IsFork, repo.IsArchived)
+			Logger.LogMessage("%s [Github Link: %s]", repo.Name, repo.Link)
+
+			// Repo Status
+			releaseStatus := ""
 			if !repo.HasReleases {
-				fmt.Printf("!!! This Repo Has No Releases. Meaning, It Can't Be Installed Using %s !!!\n", Globals.PROGRAM_NAME)
+				releaseStatus = "[NO RELEASES] "
+			}
+			archiveStatus := ""
+			if repo.IsArchived {
+				archiveStatus = "[ARCHIVED] "
+			}
+			forkStatus := ""
+			if repo.IsFork {
+				forkStatus = "[FORK] "
+			}
+			if repo.IsArchived || !repo.HasReleases || repo.IsFork {
+				Logger.LogWarning("%s%s%s", releaseStatus, archiveStatus, forkStatus)
 			}
 
 			if index != len(repos) {
-				fmt.Println()
+				Logger.LogNewLine()
 			}
 		}
 	}
@@ -58,7 +73,7 @@ func HandleSearch() {
 
 func HandleInstall() {
 	if argument, ok := IsArgumentGiven(); ok {
-		fmt.Printf("Installing: %s\n", argument)
+		Logger.LogMessageSameLine("Installing: %s", argument)
 	}
 }
 
@@ -84,7 +99,8 @@ func SortPkgOnScore(repos []Repository) {
 // Helpers
 func IsArgumentGiven() (string, bool) {
 	if len(os.Args) < 3 {
-		fmt.Printf("No Argument Specified. \n%s", Logger.LOG_MISSUSE_COMMAND)
+		Logger.LogWarningSameLine("No Argument Specified For The Command Used. \n%s", Logger.LOG_MISSUSE_COMMAND)
+		Logger.LogNewLine()
 		return "", false
 	}
 	return os.Args[2], true
