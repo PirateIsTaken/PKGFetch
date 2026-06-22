@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"time"
 
@@ -40,7 +41,7 @@ func HandleSearch() {
 		repos := GetPkgListGithub(argument)
 
 		if len(repos) == 0 {
-			Logger.LogMessage("Didn't Find Any Packages With The Name: %s", argument)
+			Logger.LogMessage("Couldn't Find Any Packages With The Name: %s", argument)
 			Logger.LogNewLine()
 			return
 		}
@@ -58,7 +59,7 @@ func HandleSearch() {
 				forkStatus = "[FORK] "
 			}
 			if repo.IsArchived || repo.IsFork {
-				Logger.LogWarning("%s%s", archiveStatus, forkStatus)
+				Logger.LogWarningSameLine(" | %s%s", archiveStatus, forkStatus)
 			}
 
 			if index != len(repos) {
@@ -73,7 +74,52 @@ func HandleSearch() {
 
 func HandleInstall() {
 	if argument, ok := IsArgumentGiven(); ok {
-		Logger.LogMessageSameLine("Installing: %s", argument)
+		Logger.LogMessageSameLine("Searching Package: %s", argument)
+		Logger.LogNewLine()
+
+		repos := GetPkgListGithub(argument)
+
+		if len(repos) == 0 {
+			Logger.LogMessage("Couldn't Find Any Packages With The Name: %s", argument)
+			Logger.LogNewLine()
+			return
+		}
+
+		for index, repo := range repos {
+			Logger.LogMessage("%d. %s", index+1, repo.Name)
+
+			// Repo Status
+			archiveStatus := ""
+			if repo.IsArchived {
+				archiveStatus = "[ARCHIVED] "
+			}
+			forkStatus := ""
+			if repo.IsFork {
+				forkStatus = "[FORK] "
+			}
+			if repo.IsArchived || repo.IsFork {
+				Logger.LogWarningSameLine(" | %s%s", archiveStatus, forkStatus)
+			}
+		}
+		Logger.LogNewLine()
+		Logger.LogMessage("Select Packages (1...<last_num>): ")
+		var choice uint
+		_, err := fmt.Scanln(&choice)
+
+		if err != nil {
+			Logger.LogError("Invlid Choice")
+			Logger.LogNewLine()
+			return
+		}
+
+		if choice > uint(len(repos)) {
+			Logger.LogError("Invlid Choice")
+			Logger.LogNewLine()
+			return
+		}
+
+		selectedRepo := repos[choice-1]
+		InstallPkgGithub(selectedRepo)
 	}
 }
 

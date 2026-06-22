@@ -93,6 +93,10 @@ func CheckReleasesGithub(repo *GithubRepo) {
 	repo.HasReleases = (resp.StatusCode == http.StatusOK)
 }
 
+func InstallPkgGithub(pkg GithubRepo) {
+	Logger.LogMessage("Installing: %s", pkg.Name)
+}
+
 // Helpers
 func GetPkgListGithub(pkgName string) []GithubRepo {
 	repos := SearchGithub(pkgName)
