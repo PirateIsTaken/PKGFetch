@@ -46,13 +46,9 @@ func HandleSearch() {
 		}
 
 		for index, repo := range repos {
-			Logger.LogMessage("%s [Github Link: %s]", repo.Name, repo.Link)
+			Logger.LogMessage("%s", repo.Name)
 
 			// Repo Status
-			releaseStatus := ""
-			if !repo.HasReleases {
-				releaseStatus = "[NO RELEASES] "
-			}
 			archiveStatus := ""
 			if repo.IsArchived {
 				archiveStatus = "[ARCHIVED] "
@@ -61,8 +57,8 @@ func HandleSearch() {
 			if repo.IsFork {
 				forkStatus = "[FORK] "
 			}
-			if repo.IsArchived || !repo.HasReleases || repo.IsFork {
-				Logger.LogWarning("%s%s%s", releaseStatus, archiveStatus, forkStatus)
+			if repo.IsArchived || repo.IsFork {
+				Logger.LogWarning("%s%s", archiveStatus, forkStatus)
 			}
 
 			if index != len(repos) {

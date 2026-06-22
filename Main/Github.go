@@ -13,7 +13,7 @@ import (
 type GithubRepo struct {
 	Name        string `json:"full_name"`
 	Description string `json:"description"`
-	Link        string `json:"html_url"`
+	ReleaseURL  string `json:"releases_url"`
 
 	Stars uint `json:"stargazers_count"`
 	Forks uint `json:"forks_count"`
@@ -77,6 +77,22 @@ func CalculateScoreGithub(repo *GithubRepo) {
 	repo.Score = score
 }
 
+func CheckReleasesGithub(repo *GithubRepo) {
+	url := fmt.Sprintf(
+		"https://api.github.com/repos/%s/releases/latest",
+		repo.Name,
+	)
+
+	resp, err := http.Get(url)
+	if err != nil {
+		repo.HasReleases = false
+		return
+	}
+	defer resp.Body.Close()
+
+	repo.HasReleases = (resp.StatusCode == http.StatusOK)
+}
+
 // Helpers
 func GetPkgListGithub(pkgName string) []GithubRepo {
 	repos := SearchGithub(pkgName)
@@ -86,7 +102,10 @@ func GetPkgListGithub(pkgName string) []GithubRepo {
 		CalculateScoreGithub(&repos[i])
 	}
 	SortPkgOnScoreGithub(repos)
-	repos = repos[:10]
+
+	if len(repos) > 10 {
+		repos = repos[:10]
+	}
 
 	return repos
 }
