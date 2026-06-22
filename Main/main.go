@@ -106,13 +106,7 @@ func HandleInstall() {
 		var choice uint
 		_, err := fmt.Scanln(&choice)
 
-		if err != nil {
-			Logger.LogError("Invlid Choice")
-			Logger.LogNewLine()
-			return
-		}
-
-		if choice > uint(len(repos)) {
+		if err != nil || choice > uint(len(repos)) {
 			Logger.LogError("Invlid Choice")
 			Logger.LogNewLine()
 			return

@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"sort"
 
+	"pkgfetch/Globals"
 	"pkgfetch/Logger"
 )
 
@@ -25,6 +26,11 @@ type GithubRepo struct {
 	Score uint `json:"-"`
 }
 
+type GithubRelease struct {
+	TagName string `json:"tag_name"`
+	Name    string `json:"name"`
+}
+
 type GithubSearchResponse struct {
 	Items []GithubRepo `json:"items"`
 }
@@ -37,7 +43,8 @@ func SearchGithub(searchName string) []GithubRepo {
 	resp, err := http.Get(searchURL)
 
 	if err != nil {
-		Logger.LogError("Failed To Contact Github: %v", err)
+		Logger.LogError("Failed To Contact Github: \n%v", err)
+		Logger.LogNewLine()
 		return nil
 	}
 
@@ -46,7 +53,8 @@ func SearchGithub(searchName string) []GithubRepo {
 	var result GithubSearchResponse
 	err = json.NewDecoder(resp.Body).Decode(&result)
 	if err != nil {
-		Logger.LogError("Failed To Get Info From Github Response: %v", err)
+		Logger.LogError("Failed To Get Info From Github Response: \n%v", err)
+		Logger.LogNewLine()
 		return nil
 	}
 
@@ -70,34 +78,71 @@ func CalculateScoreGithub(repo *GithubRepo) {
 	if !repo.IsFork {
 		score += 500
 	}
-	if repo.HasReleases {
-		score += 1000
-	}
 
 	repo.Score = score
 }
 
-func CheckReleasesGithub(repo *GithubRepo) {
+func InstallPkgGithub(repo GithubRepo) {
+	Logger.LogMessage("Installing: %s", repo.Name)
+	Logger.LogNewLine()
+	releases := CheckReleasesGithub(&repo)
+
+	if !repo.HasReleases {
+		Logger.LogMessage("The Selected Repo Doesn't Have Any Releases. Meaning, It Can't Be Installed With %s", Globals.PROGRAM_NAME)
+		return
+	}
+
+	Logger.LogMessage("Available Releases: ")
+	for index, rel := range releases {
+		Logger.LogMessage("%d. Version: %s | Tag: %s", index+1, rel.Name, rel.TagName)
+	}
+	Logger.LogNewLine()
+	Logger.LogMessage("Select Version (1...<last_num>): ")
+	var choice uint
+	_, err := fmt.Scanln(&choice)
+
+	if err != nil || choice > uint(len(releases)) {
+		Logger.LogError("Invalid Choice")
+		Logger.LogNewLine()
+		return
+	}
+
+	selectedVersion := releases[choice-1]
+
+	Logger.LogMessage("Installing Version: %s | Tag: %s", selectedVersion.Name, selectedVersion.TagName)
+	Logger.LogNewLine()
+
+}
+
+// Helpers
+func CheckReleasesGithub(repo *GithubRepo) []GithubRelease {
 	url := fmt.Sprintf(
-		"https://api.github.com/repos/%s/releases/latest",
+		"https://api.github.com/repos/%s/releases",
 		repo.Name,
 	)
 
 	resp, err := http.Get(url)
 	if err != nil {
 		repo.HasReleases = false
-		return
+		return nil
 	}
-	defer resp.Body.Close()
 
 	repo.HasReleases = (resp.StatusCode == http.StatusOK)
+
+	var relResult []GithubRelease
+	err = json.NewDecoder(resp.Body).Decode(&relResult)
+	if err != nil {
+		Logger.LogError("Failed To Fetch Releases Information From Github: \n%v", err)
+		Logger.LogNewLine()
+		return nil
+	}
+
+	defer resp.Body.Close()
+
+	relResult = relResult[:10]
+	return relResult
 }
 
-func InstallPkgGithub(pkg GithubRepo) {
-	Logger.LogMessage("Installing: %s", pkg.Name)
-}
-
-// Helpers
 func GetPkgListGithub(pkgName string) []GithubRepo {
 	repos := SearchGithub(pkgName)
 
