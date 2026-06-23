@@ -4,7 +4,7 @@
 PKGType = "rpm"
 
 # Place Where You Want Files To Be Downloaded
-DownloadPath = "~/Downloads"
+DownloadPath = "~/.cache/pkgfetch"
 
 # Place Where You Want Your Packages's bin To Be Symlinked
 # Make Sure This Path Is In `$PATH` (check with `echo $PATH`)

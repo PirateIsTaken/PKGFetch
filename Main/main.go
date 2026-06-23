@@ -23,9 +23,6 @@ func main() {
 		Logger.LogError("Failed To Apply Config Path, ReRun The Program By Checking If You Have A Config File With The Name `pkgfetch/pkgf.toml` In Your Config Dir")
 	}
 
-	Logger.LogMessageSameLine("Selected PKGType: %s", Globals.AppConfig.PKGType)
-	Logger.LogNewLine()
-
 	if len(os.Args) < 2 {
 		Logger.LogMessageSameLine("Usage:")
 		Logger.LogMessage("  %s <command>", Globals.PROGRAM_NAME_CMD)
@@ -89,8 +86,10 @@ func HandleSearch() {
 }
 
 func HandleInstall() {
+	Logger.LogMessageSameLine("Selected PKGType: %s", Globals.AppConfig.PKGType)
+
 	if argument, ok := IsArgumentGiven(); ok {
-		Logger.LogMessageSameLine("Searching Package: %s", argument)
+		Logger.LogMessage("Searching Package: %s", argument)
 		Logger.LogNewLine()
 
 		repos := GetPkgListGithub(argument)
