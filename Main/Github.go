@@ -125,6 +125,13 @@ func InstallPkgGithub(repo GithubRepo) {
 	// SELLECTING ASSET //
 	// Trim assets to show distro specific and common files
 	trimmed := TrimAssetsGithub(selectedVersion.Assets)
+
+	if len(trimmed) <= 0 {
+		Logger.LogMessage("This Repo Has 0 Releases Supported For Your Platform. Meaning, It Can't Be Downloaded From PKGFetch")
+		Logger.LogNewLine()
+		return
+	}
+
 	Logger.LogMessage("Available Assets: ")
 	for index, asset := range trimmed {
 		Logger.LogMessage("%d. %s | Size: %dMB", index+1, asset.Name, asset.Size/(1024*1024))
