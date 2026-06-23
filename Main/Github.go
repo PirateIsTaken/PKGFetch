@@ -26,9 +26,17 @@ type GithubRepo struct {
 	Score uint `json:"-"`
 }
 
+type GithubAsset struct {
+	Name        string `json:"name"`
+	DownloadURL string `json:"browser_download_url"`
+	Size        uint64 `json:"size"`
+}
+
 type GithubRelease struct {
 	TagName string `json:"tag_name"`
 	Name    string `json:"name"`
+
+	Assets []GithubAsset `json:"assets"`
 }
 
 type GithubSearchResponse struct {
@@ -92,26 +100,45 @@ func InstallPkgGithub(repo GithubRepo) {
 		return
 	}
 
+	// SELECTED RELEASES //
 	Logger.LogMessage("Available Releases: ")
 	for index, rel := range releases {
 		Logger.LogMessage("%d. Version: %s | Tag: %s", index+1, rel.Name, rel.TagName)
 	}
 	Logger.LogNewLine()
 	Logger.LogMessage("Select Version (1...<last_num>): ")
-	var choice uint
-	_, err := fmt.Scanln(&choice)
-
-	if err != nil || choice > uint(len(releases)) {
-		Logger.LogError("Invalid Choice")
-		Logger.LogNewLine()
+	choice, ok := Logger.ChooseDialog(uint(len(releases)))
+	if !ok {
 		return
 	}
 
 	selectedVersion := releases[choice-1]
 
-	Logger.LogMessage("Installing Version: %s | Tag: %s", selectedVersion.Name, selectedVersion.TagName)
+	Logger.LogMessage("Selected Version: %s | Tag: %s", selectedVersion.Name, selectedVersion.TagName)
 	Logger.LogNewLine()
 
+	// SELLECTING ASSET //
+	Logger.LogMessage("Available Assets: ")
+	for index, asset := range selectedVersion.Assets {
+		Logger.LogMessage("%d. %s | Size: %dMB", index+1, asset.Name, asset.Size/(1024*1024))
+	}
+	Logger.LogNewLine()
+	Logger.LogMessage("Select Asset (1...<last_num>): ")
+	choice, ok = Logger.ChooseDialog(uint(len(selectedVersion.Assets)))
+	if !ok {
+		return
+	}
+
+	selectedAsset := selectedVersion.Assets[choice-1]
+
+	Logger.LogMessage("Selected Asset: %s", selectedAsset.Name)
+	Logger.LogMessage("Downloading From: %s", selectedAsset.DownloadURL)
+	Logger.LogMessage("Size: %dMB", selectedAsset.Size/(1024*1024))
+
+	Logger.LogMessage("Press Enter To Confirm ")
+	fmt.Scanln()
+
+	Logger.LogMessage("WAIAJWIHNAW")
 }
 
 // Helpers

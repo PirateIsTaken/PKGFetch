@@ -8,22 +8,6 @@ import (
 
 const LOG_MISSUSE_COMMAND = "Type `" + Globals.PROGRAM_NAME_CMD + " help` to show the list of available commands and arguments"
 
-func ShowHelpDialog() {
-	LogMessageSameLine("Usage:")
-	LogMessage("  %s <command>", Globals.PROGRAM_NAME_CMD)
-	LogMessage("  %s <command> <args>", Globals.PROGRAM_NAME_CMD)
-	LogNewLine()
-	LogMessage("Available Commands:")
-	LogMessage("  - help")
-	LogMessage("      Show this dialog")
-	LogNewLine()
-	LogMessage("  - search <package_name> | <package_owner/package_name>")
-	LogMessage("      Searches for the given package name")
-	LogNewLine()
-	LogMessage("  - install <package_name> | <package_owner/package_name>")
-	LogMessage("      Installs given package name (if exists)")
-}
-
 // Message Loggins
 func LogMessage(format string, args ...any) {
 	msg := fmt.Sprintf(format, args...)
@@ -57,4 +41,34 @@ func LogErrorSameLine(format string, args ...any) {
 
 func LogNewLine() {
 	fmt.Println()
+}
+
+// Dialogs
+func ShowHelpDialog() {
+	LogMessageSameLine("Usage:")
+	LogMessage("  %s <command>", Globals.PROGRAM_NAME_CMD)
+	LogMessage("  %s <command> <args>", Globals.PROGRAM_NAME_CMD)
+	LogNewLine()
+	LogMessage("Available Commands:")
+	LogMessage("  - help")
+	LogMessage("      Show this dialog")
+	LogNewLine()
+	LogMessage("  - search <package_name> | <package_owner/package_name>")
+	LogMessage("      Searches for the given package name")
+	LogNewLine()
+	LogMessage("  - install <package_name> | <package_owner/package_name>")
+	LogMessage("      Installs given package name (if exists)")
+}
+
+func ChooseDialog(max uint) (uint, bool) {
+	var choice uint
+	_, err := fmt.Scanln(&choice)
+
+	if err != nil || choice > max {
+		LogError("Invalid Choice")
+		LogNewLine()
+		return 0, false
+	}
+
+	return choice, true
 }
