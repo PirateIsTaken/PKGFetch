@@ -3,13 +3,29 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 
 	"pkgfetch/Globals"
 	"pkgfetch/Logger"
+
+	"github.com/BurntSushi/toml"
 )
 
 func main() {
+	if !Setup() {
+		Logger.LogError("Failed To Setup PKGFetch. Stopping The Program Here.")
+		Logger.LogNewLine()
+		return
+	}
+
+	if Globals.ConfigPath == "" {
+		Logger.LogError("Failed To Apply Config Path, ReRun The Program By Checking If You Have A Config File With The Name `pkgfetch/pkgf.toml` In Your Config Dir")
+	}
+
+	Logger.LogMessageSameLine("Selected PKGType: %s", Globals.AppConfig.PKGType)
+	Logger.LogNewLine()
+
 	if len(os.Args) < 2 {
 		Logger.LogMessageSameLine("Usage:")
 		Logger.LogMessage("  %s <command>", Globals.PROGRAM_NAME_CMD)
@@ -125,4 +141,34 @@ func IsArgumentGiven() (string, bool) {
 		return "", false
 	}
 	return os.Args[2], true
+}
+
+// return if setup was successful
+func Setup() bool {
+	configDir, err := os.UserConfigDir()
+	if err != nil {
+		Logger.LogErrorSameLine("Failed To Load Config Dir: %s \nBecause: %v", configDir, err)
+		Logger.LogNewLine()
+		return false
+	}
+	Globals.ConfigPath = filepath.Join(configDir, "pkgfetch", "pkgf.toml")
+
+	// Load Config
+	var config Globals.Config
+
+	_, err = toml.DecodeFile(
+		Globals.ConfigPath,
+		&config,
+	)
+
+	if err != nil {
+		Logger.LogErrorSameLine("Failed To Load Config From: %s \nBecause: %v", Globals.ConfigPath, err)
+		Logger.LogNewLine()
+		return false
+	}
+	Globals.AppConfig = config
+
+	Globals.SupportedAssets = append(Globals.SupportedAssets, string("."+Globals.AppConfig.PKGType))
+
+	return true
 }

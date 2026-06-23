@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"sort"
+	"strings"
 
 	"pkgfetch/Globals"
 	"pkgfetch/Logger"
@@ -118,18 +119,20 @@ func InstallPkgGithub(repo GithubRepo) {
 	Logger.LogNewLine()
 
 	// SELLECTING ASSET //
+	// Trim assets to show distro specific and common files
+	trimmed := TrimAssets(selectedVersion.Assets)
 	Logger.LogMessage("Available Assets: ")
-	for index, asset := range selectedVersion.Assets {
+	for index, asset := range trimmed {
 		Logger.LogMessage("%d. %s | Size: %dMB", index+1, asset.Name, asset.Size/(1024*1024))
 	}
 	Logger.LogNewLine()
 	Logger.LogMessage("Select Asset (1...<last_num>): ")
-	choice, ok = Logger.ChooseDialog(uint(len(selectedVersion.Assets)))
+	choice, ok = Logger.ChooseDialog(uint(len(trimmed)))
 	if !ok {
 		return
 	}
 
-	selectedAsset := selectedVersion.Assets[choice-1]
+	selectedAsset := trimmed[choice-1]
 
 	Logger.LogMessage("Selected Asset: %s", selectedAsset.Name)
 	Logger.LogMessage("Downloading From: %s", selectedAsset.DownloadURL)
@@ -190,4 +193,37 @@ func SortPkgOnScoreGithub(repos []GithubRepo) {
 	sort.Slice(repos, func(i, j int) bool {
 		return repos[i].Score > repos[j].Score
 	})
+}
+
+func TrimAssets(assets []GithubAsset) []GithubAsset {
+	var filtered []GithubAsset
+
+	for _, asset := range assets {
+		// Checking For Supported Assets
+		supported := false
+		for _, ext := range Globals.SupportedAssets {
+			if strings.HasSuffix(asset.Name, ext) {
+				supported = true
+				break
+			}
+		}
+		if !supported {
+			continue
+		}
+
+		// Checking For UnSupported Assets
+		unsupported := false
+		for _, word := range Globals.UnsupportedKeywords {
+			if strings.Contains(asset.Name, word) {
+				unsupported = true
+				break
+			}
+		}
+		if unsupported {
+			continue
+		}
+
+		filtered = append(filtered, asset)
+	}
+	return filtered
 }

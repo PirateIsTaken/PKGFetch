@@ -1,9 +1,9 @@
 package Globals
 
 type Config struct {
-	Distro       string
-	DownloadPath string
-	SymlnkPath   string
+	PKGType      string `toml:"PKGType"`
+	DownloadPath string `toml:"DownloadPath"`
+	SymlnkPath   string `toml:"SymlnkPath"`
 }
 
 var AppConfig Config
@@ -15,3 +15,14 @@ var SupportedAssets []string = []string{
 	".tar.xz",
 	".zip",
 }
+var UnsupportedKeywords = []string{
+	"windows",
+	"win64",
+	"win32",
+	"macos",
+	"osx",
+	"darwin",
+}
+
+// Must be setup in the main func
+var ConfigPath string = ""

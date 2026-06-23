@@ -58,6 +58,7 @@ func ShowHelpDialog() {
 	LogNewLine()
 	LogMessage("  - install <package_name> | <package_owner/package_name>")
 	LogMessage("      Installs given package name (if exists)")
+	LogNewLine()
 }
 
 func ChooseDialog(max uint) (uint, bool) {

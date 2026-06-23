@@ -1,12 +1,12 @@
 # Available Options
-# fedora
-# ubuntu
-Distro: fedora
+# rpm (Fedora)
+# deb (Debian Based: Ubuntu, Mint, PopOS, kali, etc...)
+PKGType = "rpm"
 
 # Place Where You Want Files To Be Downloaded
-DownloadPath: ~/Downloads
+DownloadPath = "~/Downloads"
 
 # Place Where You Want Your Packages's bin To Be Symlinked
 # Make Sure This Path Is In `$PATH` (check with `echo $PATH`)
 # Leave It Empty If You Don't Want Symlinks
-SymlnkPath: ~/.local/bin
+SymlnkPath = "~/.local/bin"
