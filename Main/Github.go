@@ -3,10 +3,14 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"pkgfetch/Globals"
 	"pkgfetch/Logger"
@@ -92,7 +96,7 @@ func CalculateScoreGithub(repo *GithubRepo) {
 }
 
 func InstallPkgGithub(repo GithubRepo) {
-	Logger.LogMessage("Installing: %s", repo.Name)
+	Logger.LogMessage("Selected Package: %s", repo.Name)
 	Logger.LogNewLine()
 	releases := CheckReleasesGithub(&repo)
 
@@ -120,7 +124,7 @@ func InstallPkgGithub(repo GithubRepo) {
 
 	// SELLECTING ASSET //
 	// Trim assets to show distro specific and common files
-	trimmed := TrimAssets(selectedVersion.Assets)
+	trimmed := TrimAssetsGithub(selectedVersion.Assets)
 	Logger.LogMessage("Available Assets: ")
 	for index, asset := range trimmed {
 		Logger.LogMessage("%d. %s | Size: %dMB", index+1, asset.Name, asset.Size/(1024*1024))
@@ -141,7 +145,7 @@ func InstallPkgGithub(repo GithubRepo) {
 	Logger.LogMessage("Press Enter To Confirm ")
 	fmt.Scanln()
 
-	Logger.LogMessage("WAIAJWIHNAW")
+	DownloadAssetGithub(selectedAsset)
 }
 
 // Helpers
@@ -195,7 +199,7 @@ func SortPkgOnScoreGithub(repos []GithubRepo) {
 	})
 }
 
-func TrimAssets(assets []GithubAsset) []GithubAsset {
+func TrimAssetsGithub(assets []GithubAsset) []GithubAsset {
 	var filtered []GithubAsset
 
 	for _, asset := range assets {
@@ -226,4 +230,103 @@ func TrimAssets(assets []GithubAsset) []GithubAsset {
 		filtered = append(filtered, asset)
 	}
 	return filtered
+}
+
+func DownloadAssetGithub(asset GithubAsset) {
+	resp, err := http.Get(asset.DownloadURL)
+
+	if err != nil {
+		Logger.LogError("Failed To Download Asset %s \nBecause: %v", asset.Name, err)
+		Logger.LogNewLine()
+		return
+	}
+
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		Logger.LogError("Failed To Get User Home Dir")
+		Logger.LogNewLine()
+		return
+	}
+
+	downloadPath := strings.Replace(
+		Globals.AppConfig.DownloadPath,
+		"~",
+		homeDir,
+		1,
+	)
+
+	filePath := filepath.Join(
+		downloadPath,
+		asset.Name,
+	)
+
+	file, err := os.Create(filePath)
+	if err != nil {
+		Logger.LogError("Failed To Create File At %s \nBecause: %v", filePath, err)
+		Logger.LogNewLine()
+		return
+	}
+
+	readBuffer := make([]byte, 32*1024)
+	var downloadedBytes int64 = 0
+	var speedMBPerSec float64
+	var speedBytesPerSec float64
+
+	totalBytes := resp.ContentLength
+	var remainingBytes int64
+
+	var downloadedMB float64
+	var totalMB float64
+	var downloadPercentage float64
+	var etaTime float64
+
+	lastUpdatedTUI := time.Now()
+	startTime := time.Now()
+	for {
+		n, err := resp.Body.Read(readBuffer)
+
+		if n > 0 {
+			file.Write(readBuffer[:n])
+			downloadedBytes += int64(n)
+		}
+
+		if err == io.EOF {
+			break
+		}
+
+		if err != nil {
+			Logger.LogError("Failed To Download File: %s \nBecause: %v", asset.Name, err)
+			Logger.LogNewLine()
+			return
+		}
+
+		elapsedTime := time.Since(startTime).Seconds()
+		speedBytesPerSec = float64(downloadedBytes) / elapsedTime
+		speedMBPerSec = speedBytesPerSec / (1024 * 1024)
+
+		remainingBytes = totalBytes - downloadedBytes
+
+		downloadedMB = float64(downloadedBytes) / (1024 * 1024)
+		totalMB = float64(totalBytes) / (1024 * 1024)
+		downloadPercentage = float64(downloadedBytes) * 100 / float64(totalBytes)
+		etaTime = float64(remainingBytes) / speedBytesPerSec
+		eta := time.Duration(etaTime) * time.Second
+
+		if time.Since(lastUpdatedTUI) >= time.Second {
+			lastUpdatedTUI = time.Now()
+
+			fmt.Printf("\rDownloading... %.1f%% | %.1f MB / %.1f MB | %.1f MB/s | ETA: %s",
+				downloadPercentage,
+				downloadedMB, totalMB,
+				speedMBPerSec,
+				eta,
+			)
+		}
+	}
+
+	Logger.LogNewLine()
+	Logger.LogMessage("Successfully Downloaded \nAsset: %s \nTo Filepath: %s", asset.Name, filePath)
+
+	defer file.Close()
+	defer resp.Body.Close()
 }
