@@ -6,6 +6,9 @@ PKGType = "rpm"
 # Place Where You Want Files To Be Downloaded
 DownloadPath = "~/.cache/pkgfetch"
 
+# Place Where You Want Your AppImages To Reside
+AppImagePath = "~/Software"
+
 # Place Where You Want Your Packages's bin To Be Symlinked
 # Make Sure This Path Is In `$PATH` (check with `echo $PATH`)
 # Leave It Empty If You Don't Want Symlinks

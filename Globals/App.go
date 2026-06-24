@@ -3,6 +3,7 @@ package Globals
 type Config struct {
 	PKGType      string `toml:"PKGType"`
 	DownloadPath string `toml:"DownloadPath"`
+	AppImagePath string `toml:"AppImagePath"`
 	SymlnkPath   string `toml:"SymlnkPath"`
 }
 
