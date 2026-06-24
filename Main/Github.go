@@ -152,7 +152,15 @@ func InstallPkgGithub(repo GithubRepo) {
 	Logger.LogMessage("Press Enter To Confirm ")
 	fmt.Scanln()
 
-	DownloadAssetGithub(selectedAsset)
+	file := DownloadAssetGithub(selectedAsset)
+
+	if file == "" {
+		Logger.LogError("Failed To Get Downloaded File Path. Stopping Process...")
+		Logger.LogNewLine()
+		return
+	}
+
+	CheckAndInstall(file)
 }
 
 // Helpers
@@ -180,7 +188,10 @@ func CheckReleasesGithub(repo *GithubRepo) []GithubRelease {
 
 	defer resp.Body.Close()
 
-	relResult = relResult[:10]
+	if len(relResult) > 10 {
+		relResult = relResult[:10]
+	}
+
 	return relResult
 }
 
@@ -239,20 +250,20 @@ func TrimAssetsGithub(assets []GithubAsset) []GithubAsset {
 	return filtered
 }
 
-func DownloadAssetGithub(asset GithubAsset) {
+func DownloadAssetGithub(asset GithubAsset) string {
 	resp, err := http.Get(asset.DownloadURL)
 
 	if err != nil {
 		Logger.LogError("Failed To Download Asset %s \nBecause: %v", asset.Name, err)
 		Logger.LogNewLine()
-		return
+		return ""
 	}
 
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		Logger.LogError("Failed To Get User Home Dir")
 		Logger.LogNewLine()
-		return
+		return ""
 	}
 
 	downloadPath := strings.Replace(
@@ -267,11 +278,15 @@ func DownloadAssetGithub(asset GithubAsset) {
 		asset.Name,
 	)
 
+	if CheckFileDownloadStatus(filePath, asset.Name, resp.ContentLength, downloadPath) {
+		return filePath
+	}
+
 	file, err := os.Create(filePath)
 	if err != nil {
 		Logger.LogError("Failed To Create File At %s \nBecause: %v", filePath, err)
 		Logger.LogNewLine()
-		return
+		return ""
 	}
 
 	readBuffer := make([]byte, 32*1024)
@@ -304,7 +319,7 @@ func DownloadAssetGithub(asset GithubAsset) {
 		if err != nil {
 			Logger.LogError("Failed To Download File: %s \nBecause: %v", asset.Name, err)
 			Logger.LogNewLine()
-			return
+			return ""
 		}
 
 		elapsedTime := time.Since(startTime).Seconds()
@@ -336,4 +351,38 @@ func DownloadAssetGithub(asset GithubAsset) {
 
 	defer file.Close()
 	defer resp.Body.Close()
+
+	return filePath
+}
+
+func CheckFileDownloadStatus(file string, assetName string, ogFileSize int64, downloadPath string) bool {
+	fileInfo, err := os.Stat(file)
+	if err != nil {
+		return false
+	}
+
+	if fileInfo.Size() != ogFileSize {
+		Logger.LogWarning("A Similar File Was Downloaded Before, But It Seems To Be Incorrect Compared To The Current One. Re-Downloading File")
+		Logger.LogNewLine()
+		return false
+	}
+
+	Logger.LogMessage("File %s Already Exists In: %s", assetName, downloadPath)
+
+	for {
+		Logger.LogMessage("Do You Want To Re-download The File? [Y/N]: ")
+
+		var choice string
+		fmt.Scanln(&choice)
+		choice = strings.ToLower(choice)
+
+		switch choice {
+		case "y":
+			return false
+		case "n":
+			return true
+		default:
+			Logger.LogError("Please Enter Either 'Y' or 'N'")
+		}
+	}
 }
