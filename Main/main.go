@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"time"
@@ -117,17 +116,9 @@ func HandleInstall() {
 			}
 		}
 		Logger.LogNewLine()
-		Logger.LogMessage("Select Packages (1...<last_num>): ")
-		var choice uint
-		_, err := fmt.Scanln(&choice)
-
-		if err != nil || choice > uint(len(repos)) {
-			Logger.LogError("Invlid Choice")
-			Logger.LogNewLine()
-			return
-		}
-
+		choice := Logger.ChooseDialog(uint(len(repos)), "Select Package (1...<last_num>): ")
 		selectedRepo := repos[choice-1]
+
 		InstallPkgGithub(selectedRepo)
 	}
 }

@@ -111,12 +111,7 @@ func InstallPkgGithub(repo GithubRepo) {
 		Logger.LogMessage("%d. Version: %s | Tag: %s", index+1, rel.Name, rel.TagName)
 	}
 	Logger.LogNewLine()
-	Logger.LogMessage("Select Version (1...<last_num>): ")
-	choice, ok := Logger.ChooseDialog(uint(len(releases)))
-	if !ok {
-		return
-	}
-
+	choice := Logger.ChooseDialog(uint(len(releases)), "Select Version (1...<last_num>): ")
 	selectedVersion := releases[choice-1]
 
 	Logger.LogMessage("Selected Version: %s | Tag: %s", selectedVersion.Name, selectedVersion.TagName)
@@ -137,12 +132,7 @@ func InstallPkgGithub(repo GithubRepo) {
 		Logger.LogMessage("%d. %s | Size: %dMB", index+1, asset.Name, asset.Size/(1024*1024))
 	}
 	Logger.LogNewLine()
-	Logger.LogMessage("Select Asset (1...<last_num>): ")
-	choice, ok = Logger.ChooseDialog(uint(len(trimmed)))
-	if !ok {
-		return
-	}
-
+	choice = Logger.ChooseDialog(uint(len(trimmed)), "Select Asset (1...<last_num>): ")
 	selectedAsset := trimmed[choice-1]
 
 	Logger.LogMessage("Selected Asset: %s", selectedAsset.Name)

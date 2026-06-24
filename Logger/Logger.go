@@ -61,15 +61,20 @@ func ShowHelpDialog() {
 	LogNewLine()
 }
 
-func ChooseDialog(max uint) (uint, bool) {
+func ChooseDialog(max uint, dialogMsgFmt string, args ...any) uint {
 	var choice uint
-	_, err := fmt.Scanln(&choice)
+	for {
+		LogMessage(dialogMsgFmt, args...)
+		_, err := fmt.Scanln(&choice)
 
-	if err != nil || choice > max {
-		LogError("Invalid Choice")
-		LogNewLine()
-		return 0, false
+		if err != nil {
+			LogError("Invalid Choice")
+			continue
+		} else if choice < 1 || choice > max {
+			LogError("Chosen Number Doesn't Match Given Count")
+			continue
+		}
+
+		return choice
 	}
-
-	return choice, true
 }
