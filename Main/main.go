@@ -38,7 +38,16 @@ func main() {
 	case "search":
 		HandleSearch()
 	case "install":
-		HandleInstall()
+		if os.Args[2] == "--local" {
+			if len(os.Args) < 3 {
+				Logger.LogError("You Didn't Provide A Local File To Be Installed. \nStopping Installation Process...")
+				Logger.LogNewLine()
+				return
+			}
+			CheckAndInstall(os.Args[3])
+		} else {
+			HandleInstall()
+		}
 	default:
 		Logger.LogWarningSameLine("Unknown Command: %s \n%s", command, Logger.LOG_MISSUSE_COMMAND)
 	}
