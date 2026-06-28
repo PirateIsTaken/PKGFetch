@@ -6,8 +6,14 @@ PKGType = "rpm"
 # Place Where You Want Files To Be Downloaded
 DownloadPath = "~/.cache/pkgfetch"
 
+# Place Where AppImage(s) and tar(s) will be extracted and deleted ones installation completes
+ExtractPath = "~/.cache/pkgfetch/extracts"
+
 # Place Where You Want Your AppImages To Reside
-AppImagePath = "~/Software"
+AppImagePath = "~/Software/PKGFetch"
+
+# Place Where You Want All The Icons To Be
+IconPath = "~/.local/share/icons/pkgfetch"
 
 # Place Where You Want Your Packages's bin To Be Symlinked
 # Make Sure This Path Is In `$PATH` (check with `echo $PATH`)

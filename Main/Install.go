@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -11,6 +10,12 @@ import (
 	"strings"
 )
 
+type DesktopEntryProperties struct {
+	AppName  string
+	IconPath string
+	ExecPath string
+}
+
 // Mechanics
 func CheckAndInstall(file string) {
 	name := strings.ToLower(file)
@@ -18,18 +23,24 @@ func CheckAndInstall(file string) {
 	switch {
 	case strings.HasSuffix(name, ".rpm"):
 		InstallRpm(file)
+		return
 	case strings.HasSuffix(name, ".deb"):
 		InstallDeb(file)
+		return
 
 	case strings.HasSuffix(name, ".appimage"):
 		InstallAppimage(file)
+		return
 
 	case strings.HasSuffix(name, ".tar.gz"):
 		InstallArchive(file)
+		return
 	case strings.HasSuffix(name, ".tar.xz"):
 		InstallArchive(file)
+		return
 	case strings.HasSuffix(name, ".zip"):
 		InstallArchive(file)
+		return
 	}
 }
 
@@ -63,46 +74,50 @@ func InstallRpm(file string) {
 }
 
 func InstallDeb(file string) {
-
+	Logger.LogMessage(".deb Installation Not Yet... Sorry :)")
+	Logger.LogNewLine()
 }
 
 func InstallAppimage(file string) {
-	Logger.LogNewLine()
-	Logger.LogMessage("Copying Your AppImage To Directory %s", Globals.AppConfig.AppImagePath)
-	Logger.LogNewLine()
-
-	userHome, err := os.UserHomeDir()
-	if err != nil {
-		Logger.LogError("Cannot Find User Home Dir")
+	appImagePath := ExpandHome(Globals.AppConfig.AppImagePath)
+	if appImagePath == "" {
+		Logger.LogError("Something Went Wrong While Trying To Expand Home Dir... \nStopping Installation Process...")
 		Logger.LogNewLine()
 		return
 	}
 
-	appImagePath := strings.Replace(
-		Globals.AppConfig.AppImagePath,
-		"~",
-		userHome,
-		1,
+	Logger.LogNewLine()
+	Logger.LogMessage("Installing AppImage...")
+	Logger.LogNewLine()
+
+	appLocation := filepath.Join(
+		appImagePath,
+		filepath.Base(file),
 	)
 
-	appName := filepath.Base(file)
-	newPlace := filepath.Join(appImagePath, appName)
-
-	err = CopyFile(file, newPlace)
-
-	if err == nil {
+	// Create dir if doesn't exist
+	err := os.MkdirAll(appImagePath, 0755)
+	if err != nil {
+		Logger.LogError("Failed To Create Directory: %s \nBecause: %v", appImagePath, err)
 		Logger.LogNewLine()
-		Logger.LogMessage("Package Copied To %s", appImagePath)
-		Logger.LogMessage("To Delete Package, Just Remove It From This Folder: %s", appImagePath)
-		Logger.LogNewLine()
-
-		SetupExecForAppImage(appName)
-		AskToDeleteCache(file)
-	} else {
-		Logger.LogError("Failed To Copy Downloaded File From: %s To: %s \nBecause: %v",
-			file, newPlace, err)
-		Logger.LogNewLine()
+		return
 	}
+	err = CopyFile(file, appLocation)
+	if err != nil {
+		Logger.LogError("Failed To Copy AppImage From %s To %s \nBecause: %v", file, appImagePath, err)
+		Logger.LogNewLine()
+		return
+	}
+
+	err = os.Chmod(appLocation, 0755)
+	if err != nil {
+		Logger.LogError("Failed To Give Executing Permissions To AppImage At: %s \nBecause: %v", appLocation, err)
+		Logger.LogNewLine()
+		return
+	}
+
+	ExtractAppImage(appLocation)
+	AskToDeleteCache(file)
 }
 
 func InstallArchive(file string) {
@@ -141,75 +156,127 @@ func AskToDeleteCache(file string) {
 	}
 }
 
-func SetupExecForAppImage(app string) {
-	Logger.LogMessage("Creating Exec For %s", app)
-	file := string(Globals.AppConfig.AppImagePath + "/" + app)
-
-	appNoSuffix := strings.ToLower(app)
-	appNoSuffix = strings.TrimSuffix(appNoSuffix, ".appimage")
-
-	homeDir, err := os.UserHomeDir()
-	file = strings.Replace(
-		file,
-		"~",
-		homeDir,
-		1,
-	)
-
+// HELPERS
+func ExtractAppImage(appLocation string) {
+	extractPath := ExpandHome(Globals.AppConfig.ExtractPath)
+	err := os.MkdirAll(extractPath, 0755)
 	if err != nil {
-		Logger.LogError("Cannot Find User Home Dir")
+		Logger.LogError("Failed To Create Dirs For Extracting AppImage \nBecause: %v. \nStopping Installation Process...", err)
 		Logger.LogNewLine()
 		return
 	}
-	appDesktopDir := filepath.Join(
+
+	cmd := exec.Command(
+		appLocation,
+		"--appimage-extract",
+	)
+	cmd.Dir = extractPath // this will give squashroot-fs
+	err = cmd.Run()
+	if err != nil {
+		Logger.LogError(string("Failed To Extract AppImage Content By Runnign The Command `--appimage-extract`. \nBecause: %v"+
+			"\nCheck If The File %s Has +x(0755) Perms With `ls -l`"), err, appLocation)
+		Logger.LogNewLine()
+		return
+	}
+
+	appImgExtractDir := filepath.Join(
+		extractPath,
+		"squashfs-root",
+	)
+	desktopFile := FindDesktopFile(appImgExtractDir)
+	if desktopFile == "" {
+		return
+	}
+
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		Logger.LogError("Failed To Get User Home Dir. \nBecause: %v", err)
+		Logger.LogNewLine()
+		Logger.LogError("Stopping Installation Process.")
+		Logger.LogNewLine()
+		return
+	}
+	applicationsDir := filepath.Join(
 		homeDir,
 		".local",
 		"share",
 		"applications",
-		string(appNoSuffix+".desktop"),
 	)
-
-	content := fmt.Sprintf(
-		`[Desktop Entry]
-		Version=1.0
-		Type=Application
-		Name=%s
-		Exec=%s
-		Terminal=false`,
-		appNoSuffix,
-		file,
+	newDesktopFile := filepath.Join(
+		applicationsDir,
+		filepath.Base(desktopFile),
 	)
+	CopyFile(desktopFile, newDesktopFile)
 
-	err = os.WriteFile(
-		appDesktopDir,
-		[]byte(content),
-		0644,
-	)
+	desktopEntryInfo := ExtractInfoFromDesktopFile(newDesktopFile, appImgExtractDir)
+	desktopEntryInfo.ExecPath = appLocation
+	if desktopEntryInfo.AppName == "" {
+		desktopEntryInfo.AppName = filepath.Base(appLocation)
+	}
 
-	os.Chmod(appDesktopDir, 0755)
+	// @TODO: UPDATE SYSTEM. Check If There Is A .desktop File With The Same desktopEntryInfo.AppName
 
-	Logger.LogMessage("Created A .desktop File In: %s", appDesktopDir)
-	Logger.LogMessage("If It's Not Being Shown, Run `update-desktop-database <your .desktop dir.>`. Or Log Out and Log Back In")
+	// Modifying The Desktop File
+	SetVariableInFile(newDesktopFile, "Exec", desktopEntryInfo.ExecPath)
+	SetVariableInFile(newDesktopFile, "Icon", desktopEntryInfo.IconPath)
+
+	Logger.LogMessage("Cleaning Up...")
+	Logger.LogNewLine()
+
+	err = os.RemoveAll(appImgExtractDir)
+	if err != nil {
+		Logger.LogError("Failed To Delete Extracted Cache At %s. \nBecause: %v", appImgExtractDir, err)
+		Logger.LogWarning("You Should Care About That Error And Go Delete It Yourself.")
+		Logger.LogNewLine()
+		return
+	}
+
+	Logger.LogMessage("Successfully Installed %s To Path: %s", desktopEntryInfo.AppName, appLocation)
 	Logger.LogNewLine()
 }
 
-func CopyFile(source string, dest string) error {
-	src, err := os.Open(source)
-	if err != nil {
-		return err
+func ExtractInfoFromDesktopFile(file string, fileRoot string) DesktopEntryProperties {
+	var desktopEntryInfo DesktopEntryProperties = DesktopEntryProperties{}
+
+	iconPath := FetchIconFromDesktopFile(file, fileRoot)
+
+	if iconPath != "" {
+		configIconPath := ExpandHome(Globals.AppConfig.IconPath)
+		newIconPath := filepath.Join(
+			configIconPath,
+			filepath.Base(iconPath),
+		)
+
+		err := os.MkdirAll(configIconPath, 0755)
+		if err != nil {
+			Logger.LogError("Failed To Create Dir: %s. \nBecause: %v", newIconPath, err)
+			Logger.LogWarning("Desktop Entry Will Be Created But With No Icon...")
+			Logger.LogNewLine()
+		}
+
+		if err == nil {
+			err = CopyFile(iconPath, newIconPath)
+			if err != nil {
+				Logger.LogError(string("Failed To Copy Icon From: %s, To: %s"+
+					"\nBecause: %v"+
+					"\nDesktop Entry Will Be Created But Without An Icon."),
+					iconPath, newIconPath, err,
+				)
+				Logger.LogNewLine()
+			}
+
+			desktopEntryInfo.IconPath = newIconPath
+		}
 	}
 
-	dst, err := os.Create(dest)
-	if err != nil {
-		return err
+	// Finding The App Name
+	appName := FindVariableInFile(file, "Name=")
+	if appName == "" {
+		Logger.LogWarning("No App Name Was Found... This Is Unusual. Though The Desktop Entry Will Be Created... It Will Have A Complex Name. \nDesktop Entry Path: %s", file)
+		Logger.LogNewLine()
+	} else {
+		desktopEntryInfo.AppName = appName
 	}
 
-	_, err = io.Copy(dst, src)
-	if err != nil {
-		return err
-	}
-
-	defer dst.Close()
-	defer src.Close()
-	return err
+	return desktopEntryInfo
 }
